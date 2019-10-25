@@ -36,6 +36,20 @@ Adafruit_HTU21DF::Adafruit_HTU21DF()
  * @return true (1) if the device was successfully initialised, otherwise
  *         false (0).
  */
+boolean Adafruit_HTU21DF::begin(int sdaline, int scl_line)
+{
+    Wire.begin(sdaline, scl_line);
+
+    Wire.setClock(100000);
+    reset();
+
+    Wire.beginTransmission(HTU21DF_I2CADDR);
+    Wire.write(HTU21DF_READREG);
+    Wire.endTransmission();
+    Wire.requestFrom(HTU21DF_I2CADDR, 1);
+    return (Wire.read() == 0x2); // after reset should be 0x2
+    //return 20; // after reset should be 0x2
+}
 boolean Adafruit_HTU21DF::begin(void)
 {
     Wire.begin();
@@ -101,6 +115,53 @@ float Adafruit_HTU21DF::readTemperature(void)
     return temp;
 }
 
+float Adafruit_HTU21DF::readTemperature12(void)
+{
+    //set resolution to 12bits
+    Wire.beginTransmission(HTU21DF_I2CADDR);
+    Wire.write(HTU21DF_READREG);
+    Wire.endTransmission();
+    Wire.requestFrom(HTU21DF_I2CADDR, 1);
+    uint8_t val= Wire.read() ;
+    Wire.beginTransmission(HTU21DF_I2CADDR);
+    Wire.write(HTU21DF_WRITEREG);
+    Wire.write(val | 0b00000001); // set to 12 bits of resolution
+    Wire.endTransmission();
+
+
+
+    // OK lets ready!
+    Wire.beginTransmission(HTU21DF_I2CADDR);
+    Wire.write(HTU21DF_READTEMP);
+    Wire.endTransmission();
+
+    delay(13); // add delay between request and actual read!
+
+    uint8_t count = Wire.requestFrom(HTU21DF_I2CADDR, 3);
+
+    /* Make sure we got 3 bytes back. */
+    if (count != 3) {
+        return 0.0f;
+    }
+
+    /* Read 16 bits of data, dropping the last two status bits. */
+    uint16_t t = Wire.read();
+    t <<= 8;
+    t |= Wire.read() & 0b11111100;
+
+    uint8_t crc = Wire.read();
+    (void)crc;
+
+    float temp = t;
+    temp *= 175.72f;
+    temp /= 65536.0f;
+    temp -= 46.85f;
+
+    /* Track the value internally in case we need to access it later. */
+    _last_temp = temp;
+
+    return temp;
+}
 /**
  * Performs a single relative humidity conversion.
  *
@@ -115,6 +176,58 @@ float Adafruit_HTU21DF::readHumidity(void) {
 
     /* Wait a bit for the conversion to complete. */
     delay(50);
+
+    /* Read the conversion results. */
+    uint8_t count = Wire.requestFrom(HTU21DF_I2CADDR, 3);
+
+    /* Make sure we got 3 bytes back. */
+    if (count != 3) {
+        return 0.0f;
+    }
+
+    /* Read 16 bits of data, dropping the last two status bits. */
+    uint16_t h = Wire.read();
+    h <<= 8;
+    h |= Wire.read() & 0b11111100;
+
+    uint8_t crc = Wire.read();
+    (void)crc;
+
+    float hum = h;
+    hum *= 125.0f;
+    hum /= 65536.0f;
+    hum -= 6.0f;
+
+    /* Track the value internally in case we need to access it later. */
+    _last_humidity = hum;
+
+    return hum;
+}
+
+float Adafruit_HTU21DF::readHumidity12(void) {
+
+    //set resolution to 12bits
+    Wire.beginTransmission(HTU21DF_I2CADDR);
+    Wire.write(HTU21DF_READREG);
+    Wire.endTransmission();
+    Wire.requestFrom(HTU21DF_I2CADDR, 1);
+    uint8_t val= Wire.read() ;
+    Wire.beginTransmission(HTU21DF_I2CADDR);
+    Wire.write(HTU21DF_WRITEREG);
+    Wire.write(val | 0b00000001); // set to 12 bits of resolution
+    Wire.endTransmission();
+
+
+
+
+
+    /* Prepare the I2C request. */
+    Wire.beginTransmission(HTU21DF_I2CADDR);
+    Wire.write(HTU21DF_READHUM);
+    Wire.endTransmission();
+
+    /* Wait a bit for the conversion to complete. */
+    delay(13);
 
     /* Read the conversion results. */
     uint8_t count = Wire.requestFrom(HTU21DF_I2CADDR, 3);

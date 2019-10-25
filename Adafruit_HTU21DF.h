@@ -28,10 +28,10 @@
 #define HTU21DF_I2CADDR         (0x40)
 
 /** Read temperature register. */
-#define HTU21DF_READTEMP        (0xE3)
+#define HTU21DF_READTEMP        (0xF3)
 
 /** Read humidity register. */
-#define HTU21DF_READHUM         (0xE5)
+#define HTU21DF_READHUM         (0xF5)
 
 /** Write register command. */
 #define HTU21DF_WRITEREG        (0xE6)
@@ -49,9 +49,12 @@ class Adafruit_HTU21DF {
     public:
         Adafruit_HTU21DF();
 
+        boolean begin(int, int);
         boolean begin(void);
         float   readTemperature(void);
         float   readHumidity(void);
+        float   readTemperature12(void);
+        float   readHumidity12(void);
         void    reset(void);
 
     private:
